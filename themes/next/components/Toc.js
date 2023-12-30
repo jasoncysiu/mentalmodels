@@ -1,8 +1,7 @@
-import React, { useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import throttle from 'lodash.throttle'
 import { uuidToId } from 'notion-utils'
 import Progress from './Progress'
-// import { cs } from 'react-notion-x'
 
 /**
  * 目录导航组件
@@ -11,12 +10,8 @@ import Progress from './Progress'
  * @constructor
  */
 const Toc = ({ toc }) => {
-  // 无目录就直接返回空
-  if (!toc || toc.length < 1) {
-    return <></>
-  }
   // 监听滚动事件
-  React.useEffect(() => {
+  useEffect(() => {
     window.addEventListener('scroll', actionSectionScrollSpy)
     actionSectionScrollSpy()
     return () => {
@@ -29,9 +24,9 @@ const Toc = ({ toc }) => {
   const tocIds = []
 
   // 同步选中目录事件
-  const [activeSection, setActiveSection] = React.useState(null)
-  const throttleMs = 100
-  const actionSectionScrollSpy = React.useCallback(throttle(() => {
+  const [activeSection, setActiveSection] = useState(null)
+  const throttleMs = 200
+  const actionSectionScrollSpy = useCallback(throttle(() => {
     const sections = document.getElementsByClassName('notion-h')
     let prevBBox = null
     let currentSectionId = activeSection
@@ -57,6 +52,11 @@ const Toc = ({ toc }) => {
     const index = tocIds.indexOf(currentSectionId) || 0
     tRef?.current?.scrollTo({ top: 28 * index, behavior: 'smooth' })
   }, throttleMs))
+
+  // 无目录就直接返回空
+  if (!toc || toc.length < 1) {
+    return <></>
+  }
 
   return <div className='px-3'>
     <div className='w-full pb-1'>
