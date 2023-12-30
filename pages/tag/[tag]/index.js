@@ -1,40 +1,34 @@
 import { useGlobal } from '@/lib/global'
-import { getGlobalData } from '@/lib/notion/getNotionData'
+import { getGlobalNotionData } from '@/lib/notion/getNotionData'
+import * as ThemeMap from '@/themes'
 import BLOG from '@/blog.config'
-import { useRouter } from 'next/router'
-import { getLayoutByTheme } from '@/themes/theme'
-import { siteConfig } from '@/lib/config'
 
-/**
- * 标签下的文章列表
- * @param {*} props
- * @returns
- */
 const Tag = props => {
+  const { theme } = useGlobal()
+  const ThemeComponents = ThemeMap[theme]
   const { locale } = useGlobal()
-  const { tag, siteInfo } = props
+  const { tag, siteInfo, posts } = props
 
-  // 根据页面路径加载不同Layout文件
-  const Layout = getLayoutByTheme({ theme: siteConfig('THEME'), router: useRouter() })
+  if (!posts) {
+    return <ThemeComponents.Layout404 {...props} />
+  }
 
   const meta = {
-    title: `${tag} | ${locale.COMMON.TAGS} | ${siteConfig('TITLE')}`,
-    description: siteConfig('DESCRIPTION'),
+    title: `${tag} | ${locale.COMMON.TAGS} | ${siteInfo?.title}`,
+    description: siteInfo?.description,
     image: siteInfo?.pageCover,
     slug: 'tag/' + tag,
     type: 'website'
   }
-  props = { ...props, meta }
-
-  return <Layout {...props} />
+  return <ThemeComponents.LayoutTag {...props} meta={meta} />
 }
 
 export async function getStaticProps({ params: { tag } }) {
   const from = 'tag-props'
-  const props = await getGlobalData({ from })
+  const props = await getGlobalNotionData({ from })
 
   // 过滤状态
-  props.posts = props.allPages?.filter(page => page.type === 'Post' && page.status === 'Published').filter(post => post && post?.tags && post?.tags.includes(tag))
+  props.posts = props.allPages.filter(page => page.type === 'Post' && page.status === 'Published').filter(post => post && post.tags && post.tags.includes(tag))
 
   // 处理文章页数
   props.postCount = props.posts.length
@@ -43,14 +37,13 @@ export async function getStaticProps({ params: { tag } }) {
   if (BLOG.POST_LIST_STYLE === 'scroll') {
     // 滚动列表 给前端返回所有数据
   } else if (BLOG.POST_LIST_STYLE === 'page') {
-    props.posts = props.posts?.slice(0, BLOG.POSTS_PER_PAGE)
+    props.posts = props.posts?.slice(0, BLOG.POSTS_PER_PAGE - 1)
   }
 
   props.tag = tag
-  delete props.allPages
   return {
     props,
-    revalidate: parseInt(BLOG.NEXT_REVALIDATE_SECOND)
+    revalidate: 1
   }
 }
 
@@ -69,8 +62,8 @@ function getTagNames(tags) {
 
 export async function getStaticPaths() {
   const from = 'tag-static-path'
-  const { tagOptions } = await getGlobalData({ from })
-  const tagNames = getTagNames(tagOptions)
+  const { tags } = await getGlobalNotionData({ from })
+  const tagNames = getTagNames(tags)
 
   return {
     paths: Object.keys(tagNames).map(index => ({

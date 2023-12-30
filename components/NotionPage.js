@@ -1,51 +1,54 @@
-import dynamic from 'next/dynamic'
-import mediumZoom from '@fisch0920/medium-zoom'
-import { useEffect, useRef } from 'react'
-import 'katex/dist/katex.min.css'
-import { mapImgUrl } from '@/lib/notion/mapImage'
-import { isBrowser } from '@/lib/utils'
-import { siteConfig } from '@/lib/config'
 import { NotionRenderer } from 'react-notion-x'
+import dynamic from 'next/dynamic'
+// import mediumZoom from 'medium-zoom'
+import mediumZoom from '@fisch0920/medium-zoom'
+import React from 'react'
+import { isBrowser } from '@/lib/utils'
+import Image from 'next/image'
+import Link from 'next/link'
+import { Code } from 'react-notion-x/build/third-party/code'
+import { Pdf } from 'react-notion-x/build/third-party/pdf'
+import { Equation } from 'react-notion-x/build/third-party/equation'
 
-// Notion渲染
-// const NotionRenderer = dynamic(() => import('react-notion-x').then(async (m) => {
-//   return m.NotionRenderer
-// }), {
-//   ssr: false
-// })
+import 'prismjs/components/prism-bash.js'
+import 'prismjs/components/prism-markup-templating.js'
+import 'prismjs/components/prism-markup.js'
+import 'prismjs/components/prism-c.js'
+import 'prismjs/components/prism-cpp.js'
+import 'prismjs/components/prism-csharp.js'
+import 'prismjs/components/prism-docker.js'
+import 'prismjs/components/prism-java.js'
+import 'prismjs/components/prism-js-templates.js'
+import 'prismjs/components/prism-coffeescript.js'
+import 'prismjs/components/prism-diff.js'
+import 'prismjs/components/prism-git.js'
+import 'prismjs/components/prism-go.js'
+import 'prismjs/components/prism-graphql.js'
+import 'prismjs/components/prism-handlebars.js'
+import 'prismjs/components/prism-less.js'
+import 'prismjs/components/prism-makefile.js'
+import 'prismjs/components/prism-markdown.js'
+import 'prismjs/components/prism-objectivec.js'
+import 'prismjs/components/prism-ocaml.js'
+import 'prismjs/components/prism-python.js'
+import 'prismjs/components/prism-reason.js'
+import 'prismjs/components/prism-rust.js'
+import 'prismjs/components/prism-sass.js'
+import 'prismjs/components/prism-scss.js'
+import 'prismjs/components/prism-solidity.js'
+import 'prismjs/components/prism-sql.js'
+import 'prismjs/components/prism-stylus.js'
+import 'prismjs/components/prism-swift.js'
+import 'prismjs/components/prism-wasm.js'
+import 'prismjs/components/prism-yaml.js'
+import 'prismjs/components/prism-r.js'
 
-const Code = dynamic(() =>
-  import('react-notion-x/build/third-party/code').then(async (m) => {
-    return m.Code
-  }), { ssr: false }
-)
-
-// 公式
-const Equation = dynamic(() =>
-  import('@/components/Equation').then(async (m) => {
-    // 化学方程式
-    await import('@/lib/mhchem')
-    return m.Equation
-  }), { ssr: false }
-)
-
-const Pdf = dynamic(
-  () => import('react-notion-x/build/third-party/pdf').then((m) => m.Pdf),
-  {
-    ssr: false
-  }
-)
+// 化学方程式
+import '@/lib/mhchem'
 
 // https://github.com/txs
 // import PrismMac from '@/components/PrismMac'
 const PrismMac = dynamic(() => import('@/components/PrismMac'), {
-  ssr: false
-})
-
-/**
- * tweet嵌入
- */
-const TweetEmbed = dynamic(() => import('react-tweet-embed'), {
   ssr: false
 })
 
@@ -57,99 +60,66 @@ const Modal = dynamic(
   () => import('react-notion-x/build/third-party/modal').then((m) => m.Modal), { ssr: false }
 )
 
-const Tweet = ({ id }) => {
-  return <TweetEmbed tweetId={id} />
-}
-
-const NotionPage = ({ post, className }) => {
-  useEffect(() => {
-    autoScrollToTarget()
-  }, [])
-
-  const zoom = typeof window !== 'undefined' && mediumZoom({
+const NotionPage = ({ post }) => {
+  const zoom = isBrowser() && mediumZoom({
     container: '.notion-viewport',
     background: 'rgba(0, 0, 0, 0.2)',
+    scrollOffset: 200,
     margin: getMediumZoomMargin()
   })
-  const zoomRef = useRef(zoom ? zoom.clone() : null)
 
-  useEffect(() => {
-    // 将相册gallery下的图片加入放大功能
-    if (siteConfig('POST_DISABLE_GALLERY_CLICK')) {
-      setTimeout(() => {
-        if (isBrowser) {
-          const imgList = document?.querySelectorAll('.notion-collection-card-cover img')
-          if (imgList && zoomRef.current) {
-            for (let i = 0; i < imgList.length; i++) {
-              (zoomRef.current).attach(imgList[i])
-            }
-          }
+  const zoomRef = React.useRef(zoom ? zoom.clone() : null)
 
-          const cards = document.getElementsByClassName('notion-collection-card')
-          for (const e of cards) {
-            e.removeAttribute('href')
-          }
-        }
-      }, 800)
-    }
-
-    /**
-     * 处理页面内连接跳转
-     * 如果链接就是当前网站，则不打开新窗口访问
-     */
-    if (isBrowser) {
-      const currentURL = window.location.origin + window.location.pathname
-      const allAnchorTags = document.getElementsByTagName('a') // 或者使用 document.querySelectorAll('a') 获取 NodeList
-      for (const anchorTag of allAnchorTags) {
-        if (anchorTag?.target === '_blank') {
-          const hrefWithoutQueryHash = anchorTag.href.split('?')[0].split('#')[0]
-          const hrefWithRelativeHash = currentURL.split('#')[0] + anchorTag.href.split('#')[1]
-
-          if (currentURL === hrefWithoutQueryHash || currentURL === hrefWithRelativeHash) {
-            anchorTag.target = '_self'
-          }
+  React.useEffect(() => {
+    setTimeout(() => {
+      if (window.location.hash) {
+        const tocNode = document.getElementById(window.location.hash.substring(1))
+        if (tocNode && tocNode?.className?.indexOf('notion') > -1) {
+          tocNode.scrollIntoView({ block: 'start', behavior: 'smooth' })
         }
       }
-    }
+    }, 180)
+
+    setTimeout(() => {
+      if (isBrowser()) {
+        // 将相册gallery下的图片加入放大功能
+        const imgList = document.querySelectorAll('.notion-collection-card-cover img')
+        if (imgList && zoomRef.current) {
+          for (let i = 0; i < imgList.length; i++) {
+            (zoomRef.current).attach(imgList[i])
+          }
+        }
+
+        // 相册图片点击不跳转
+        const cards = document.getElementsByClassName('notion-collection-card')
+        for (const e of cards) {
+          e.removeAttribute('href')
+        }
+      }
+    }, 800)
   }, [])
 
   if (!post || !post.blockMap) {
     return <>{post?.summary || ''}</>
   }
 
-  return <div id='notion-article' className={`mx-auto overflow-hidden ${className || ''}`}>
+  return <div id='container' className='max-w-5xl overflow-x-visible mx-auto'>
     <NotionRenderer
       recordMap={post.blockMap}
       mapPageUrl={mapPageUrl}
-      mapImageUrl={mapImgUrl}
       components={{
         Code,
         Collection,
         Equation,
         Modal,
         Pdf,
-        Tweet
+        nextImage: Image,
+        nextLink: Link
       }} />
 
-      <PrismMac/>
+      <PrismMac />
 
   </div>
-}
-
-/**
- * 根据url参数自动滚动到指定区域
- */
-const autoScrollToTarget = () => {
-  setTimeout(() => {
-    // 跳转到指定标题
-    const needToJumpToTitle = window.location.hash
-    if (needToJumpToTitle) {
-      const tocNode = document.getElementById(window.location.hash.substring(1))
-      if (tocNode && tocNode?.className?.indexOf('notion') > -1) {
-        tocNode.scrollIntoView({ block: 'start', behavior: 'smooth' })
-      }
-    }
-  }, 180)
 }
 
 /**
@@ -162,10 +132,6 @@ const mapPageUrl = id => {
   return '/' + id.replace(/-/g, '')
 }
 
-/**
- * 缩放
- * @returns
- */
 function getMediumZoomMargin() {
   const width = window.innerWidth
 
@@ -183,4 +149,5 @@ function getMediumZoomMargin() {
     return 72
   }
 }
+
 export default NotionPage

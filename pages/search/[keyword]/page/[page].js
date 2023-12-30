@@ -1,29 +1,28 @@
-import { getGlobalData } from '@/lib/notion/getNotionData'
+import { getGlobalNotionData } from '@/lib/notion/getNotionData'
 import { useGlobal } from '@/lib/global'
 import { getDataFromCache } from '@/lib/cache/cache_manager'
+import * as ThemeMap from '@/themes'
 import BLOG from '@/blog.config'
-import { useRouter } from 'next/router'
-import { getLayoutByTheme } from '@/themes/theme'
-import { siteConfig } from '@/lib/config'
 
 const Index = props => {
   const { keyword, siteInfo } = props
   const { locale } = useGlobal()
-
-  // 根据页面路径加载不同Layout文件
-  const Layout = getLayoutByTheme({ theme: siteConfig('THEME'), router: useRouter() })
-
   const meta = {
-    title: `${keyword || ''}${keyword ? ' | ' : ''}${locale.NAV.SEARCH} | ${siteConfig('TITLE')}`,
-    description: siteConfig('TITLE'),
+    title: `${keyword || ''}${keyword ? ' | ' : ''}${locale.NAV.SEARCH} | ${siteInfo?.title}`,
+    description: siteInfo?.title,
     image: siteInfo?.pageCover,
     slug: 'search/' + (keyword || ''),
     type: 'website'
   }
-
-  props = { ...props, meta, currentSearch: keyword }
-
-  return <Layout {...props} />
+  const { theme } = useGlobal()
+  const ThemeComponents = ThemeMap[theme]
+  return (
+    <ThemeComponents.LayoutSearch
+      {...props}
+      meta={meta}
+      currentSearch={keyword}
+    />
+  )
 }
 
 /**
@@ -32,22 +31,21 @@ const Index = props => {
  * @returns
  */
 export async function getStaticProps({ params: { keyword, page } }) {
-  const props = await getGlobalData({
+  const props = await getGlobalNotionData({
     from: 'search-props',
     pageType: ['Post']
   })
   const { allPages } = props
-  const allPosts = allPages?.filter(page => page.type === 'Post' && page.status === 'Published')
+  const allPosts = allPages.filter(page => page.type === 'Post' && page.status === 'Published')
   props.posts = await filterByMemCache(allPosts, keyword)
   props.postCount = props.posts.length
   // 处理分页
-  props.posts = props.posts.slice(BLOG.POSTS_PER_PAGE * (page - 1), BLOG.POSTS_PER_PAGE * page)
+  props.posts = props.posts.slice(BLOG.POSTS_PER_PAGE * (page - 1), BLOG.POSTS_PER_PAGE * page - 1)
   props.keyword = keyword
   props.page = page
-  delete props.allPages
   return {
     props,
-    revalidate: parseInt(BLOG.NEXT_REVALIDATE_SECOND)
+    revalidate: 1
   }
 }
 
@@ -116,7 +114,7 @@ async function filterByMemCache(allPosts, keyword) {
   for (const post of allPosts) {
     const cacheKey = 'page_block_' + post.id
     const page = await getDataFromCache(cacheKey, true)
-    const tagContent = post?.tags && Array.isArray(post?.tags) ? post?.tags.join(' ') : ''
+    const tagContent = post.tags && Array.isArray(post.tags) ? post.tags.join(' ') : ''
     const categoryContent = post.category && Array.isArray(post.category) ? post.category.join(' ') : ''
     const articleInfo = post.title + post.summary + tagContent + categoryContent
     let hit = articleInfo.indexOf(keyword) > -1

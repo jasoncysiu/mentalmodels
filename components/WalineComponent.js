@@ -1,45 +1,30 @@
-import React, { createRef } from 'react'
+import React from 'react'
 import { init } from '@waline/client'
+import BLOG from '@/blog.config'
 import { useRouter } from 'next/router'
-import '@waline/client/dist/waline.css'
-import { siteConfig } from '@/lib/config'
 
-const path = ''
-let waline = null
 /**
  * @see https://waline.js.org/guide/get-started.html
  * @param {*} props
  * @returns
  */
 const WalineComponent = (props) => {
-  const containerRef = createRef()
+  const walineInstanceRef = React.useRef(null)
+  const containerRef = React.createRef()
   const router = useRouter()
 
   const updateWaline = url => {
-    if (url !== path && waline) {
-      waline.update(props)
-    }
+    walineInstanceRef.current?.update(props)
   }
 
   React.useEffect(() => {
-    if (!waline) {
-      waline = init({
-        ...props,
-        el: containerRef.current,
-        serverURL: siteConfig('COMMENT_WALINE_SERVER_URL'),
-        lang: siteConfig('LANG'),
-        reaction: true,
-        dark: 'html.dark',
-        emoji: [
-          '//npm.elemecdn.com/@waline/emojis@1.1.0/tieba',
-          '//npm.elemecdn.com/@waline/emojis@1.1.0/weibo',
-          '//npm.elemecdn.com/@waline/emojis@1.1.0/bilibili'
-        ]
-      })
-    }
-
-    // 跳转评论
+    walineInstanceRef.current = init({
+      ...props,
+      el: containerRef.current,
+      serverURL: BLOG.COMMENT_WALINE_SERVER_URL
+    })
     router.events.on('routeChangeComplete', updateWaline)
+
     const anchor = window.location.hash
     if (anchor) {
       // 选择需要观察变动的节点
@@ -69,10 +54,7 @@ const WalineComponent = (props) => {
     }
 
     return () => {
-      if (waline) {
-        waline.destroy()
-        waline = null
-      }
+      walineInstanceRef.current?.destroy()
       router.events.off('routeChangeComplete', updateWaline)
     }
   }, [])

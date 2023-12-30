@@ -1,41 +1,26 @@
 import BLOG from '@/blog.config'
 import { getPostBlocks } from '@/lib/notion'
-import { getGlobalData } from '@/lib/notion/getNotionData'
-import { generateRss } from '@/lib/rss'
-import { generateRobotsTxt } from '@/lib/robots.txt'
-import { getLayoutByTheme } from '@/themes/theme'
-import { siteConfig } from '@/lib/config'
-import { useRouter } from 'next/router'
-
-/**
- * 首页布局
- * @param {*} props
- * @returns
- */
+import { getGlobalNotionData } from '@/lib/notion/getNotionData'
+import * as ThemeMap from '@/themes'
+import { useGlobal } from '@/lib/global'
 const Index = props => {
-  // 根据页面路径加载不同Layout文件
-  const Layout = getLayoutByTheme({ theme: siteConfig('THEME'), router: useRouter() })
+  const { theme } = useGlobal()
+  const ThemeComponents = ThemeMap[theme]
+  return <ThemeComponents.LayoutIndex {...props} />
+}
 
+export async function getStaticProps() {
+  const from = 'index'
+  const props = await getGlobalNotionData({ from })
+  const { siteInfo } = props
+  props.posts = props.allPages.filter(page => page.type === 'Post' && page.status === 'Published')
   const meta = {
-    title: `${siteConfig('TITLE')} | ${siteConfig('DESCRIPTION')}`,
-    description: siteConfig('DESCRIPTION'),
-    image: siteConfig('HOME_BANNER_IMAGE'),
+    title: `${siteInfo?.title} | ${siteInfo?.description}`,
+    description: siteInfo?.description,
+    image: siteInfo?.pageCover,
     slug: '',
     type: 'website'
   }
-  return <Layout meta={meta} {...props} />
-}
-
-/**
- * SSG 获取数据
- * @returns
- */
-export async function getStaticProps() {
-  const from = 'index'
-  const props = await getGlobalData({ from })
-
-  props.posts = props.allPages?.filter(page => page.type === 'Post' && page.status === 'Published')
-
   // 处理分页
   if (BLOG.POST_LIST_STYLE === 'scroll') {
     // 滚动列表默认给前端返回所有数据
@@ -54,20 +39,12 @@ export async function getStaticProps() {
     }
   }
 
-  // 生成robotTxt
-  generateRobotsTxt()
-  // 生成Feed订阅
-  if (JSON.parse(BLOG.ENABLE_RSS)) {
-    generateRss(props?.latestPosts || [])
-  }
-
-  // 生成全文索引 - 仅在 yarn build 时执行 && process.env.npm_lifecycle_event === 'build'
-
-  delete props.allPages
-
   return {
-    props,
-    revalidate: parseInt(BLOG.NEXT_REVALIDATE_SECOND)
+    props: {
+      meta,
+      ...props
+    },
+    revalidate: 5
   }
 }
 

@@ -1,15 +1,13 @@
 import { useGlobal } from '@/lib/global'
-import { saveDarkModeToCookies } from '@/themes/theme'
-import CONFIG from '../config'
-import { siteConfig } from '@/lib/config'
+import { saveDarkModeToCookies } from '@/lib/theme'
+import CONFIG_HEXO from '../config_hexo'
 
 export default function FloatDarkModeButton () {
-  const { isDarkMode, updateDarkMode } = useGlobal()
-
-  if (!siteConfig('HEXO_WIDGET_DARK_MODE', null, CONFIG)) {
+  if (!CONFIG_HEXO.WIDGET_DARK_MODE) {
     return <></>
   }
 
+  const { isDarkMode, updateDarkMode } = useGlobal()
   // 用户手动设置主题
   const handleChangeDarkMode = () => {
     const newStatus = !isDarkMode

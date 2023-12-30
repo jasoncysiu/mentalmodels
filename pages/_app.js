@@ -1,52 +1,58 @@
-import '@/styles/animate.css' // @see https://animate.style/
+import BLOG from 'blog.config'
+import 'animate.css'
 import '@/styles/globals.css'
-import '@/styles/nprogress.css'
-import '@/styles/utility-patterns.css'
-
+// custom
 // core styles shared by all of react-notion-x (required)
 import 'react-notion-x/src/styles.css'
 import '@/styles/notion.css' //  重写部分样式
-import 'aos/dist/aos.css' // You can also use <link> for styles
 
+// used for collection views (optional)
+// import 'rc-dropdown/assets/index.css'
+// import 'prismjs/themes/prism-tomorrow.min.css'
+import 'prism-themes/themes/prism-one-dark.css'
+import '@/styles/prism-mac-style.css' //  將 Prism 加入 mac 視窗樣式
+
+// import 'react-notion-x/build/third-party/equation.css'
+import 'katex/dist/katex.min.css'
+
+// waline 评论插件
+import '@waline/client/dist/waline.css'
+
+import dynamic from 'next/dynamic'
 import { GlobalContextProvider } from '@/lib/global'
-import { isBrowser, loadExternalResource } from '@/lib/utils'
+import { DebugPanel } from '@/components/DebugPanel'
+import { ThemeSwitch } from '@/components/ThemeSwitch'
+import { Fireworks } from '@/components/Fireworks'
 
-// 各种扩展插件 这个要阻塞引入
-import ExternalPlugins from '@/components/ExternalPlugins'
-import { CUSTOM_EXTERNAL_CSS, CUSTOM_EXTERNAL_JS, IMG_SHADOW } from '@/blog.config'
+const Ackee = dynamic(() => import('@/components/Ackee'), { ssr: false })
+const Gtag = dynamic(() => import('@/components/Gtag'), { ssr: false })
+const Busuanzi = dynamic(() => import('@/components/Busuanzi'), { ssr: false })
+const GoogleAdsense = dynamic(() => import('@/components/GoogleAdsense'), {
+  ssr: false
+})
+const Messenger = dynamic(() => import('@/components/FacebookMessenger'), {
+  ssr: false
+})
 
 const MyApp = ({ Component, pageProps }) => {
-  // 自定义样式css和js引入
-  if (isBrowser) {
-    // 初始化AOS动画
-    // 静态导入本地自定义样式
-    loadExternalResource('/css/custom.css', 'css')
-    loadExternalResource('/js/custom.js', 'js')
-
-    // 自动添加图片阴影
-    if (IMG_SHADOW) {
-      loadExternalResource('/css/img-shadow.css', 'css')
-    }
-
-    // 导入外部自定义脚本
-    if (CUSTOM_EXTERNAL_JS && CUSTOM_EXTERNAL_JS.length > 0) {
-      for (const url of CUSTOM_EXTERNAL_JS) {
-        loadExternalResource(url, 'js')
-      }
-    }
-
-    // 导入外部自定义样式
-    if (CUSTOM_EXTERNAL_CSS && CUSTOM_EXTERNAL_CSS.length > 0) {
-      for (const url of CUSTOM_EXTERNAL_CSS) {
-        loadExternalResource(url, 'css')
-      }
-    }
-  }
+  // 外部插件
+  const externalPlugins = <>
+        {JSON.parse(BLOG.THEME_SWITCH) && <ThemeSwitch />}
+        {JSON.parse(BLOG.DEBUG) && <DebugPanel />}
+        {BLOG.ANALYTICS_ACKEE_TRACKER && <Ackee />}
+        {BLOG.ANALYTICS_GOOGLE_ID && <Gtag />}
+        {JSON.parse(BLOG.ANALYTICS_BUSUANZI_ENABLE) && <Busuanzi />}
+        {BLOG.ADSENSE_GOOGLE_ID && <GoogleAdsense />}
+        {BLOG.FACEBOOK_APP_ID && BLOG.FACEBOOK_PAGE_ID && <Messenger />}
+        {JSON.parse(BLOG.FIREWORKS) && <Fireworks/>}
+    </>
 
   return (
-        <GlobalContextProvider {...pageProps}>
+        <GlobalContextProvider>
+            {/* FontawesomeCDN */}
+            <link rel="stylesheet" href={BLOG.FONT_AWESOME_PATH} referrerPolicy="no-referrer" />
+            {externalPlugins}
             <Component {...pageProps} />
-            <ExternalPlugins {...pageProps} />
         </GlobalContextProvider>
   )
 }

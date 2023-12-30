@@ -1,10 +1,8 @@
-import { getGlobalData } from '@/lib/notion/getNotionData'
+import { getGlobalNotionData } from '@/lib/notion/getNotionData'
 import React from 'react'
 import { useGlobal } from '@/lib/global'
-import BLOG from '@/blog.config'
-import { useRouter } from 'next/router'
-import { getLayoutByTheme } from '@/themes/theme'
-import { siteConfig } from '@/lib/config'
+import * as ThemeMap from '@/themes'
+import { getAllCategories } from '@/lib/notion/getAllCategories'
 
 /**
  * 分类首页
@@ -12,29 +10,26 @@ import { siteConfig } from '@/lib/config'
  * @returns
  */
 export default function Category(props) {
+  const { theme } = useGlobal()
+  const ThemeComponents = ThemeMap[theme]
   const { locale } = useGlobal()
   const { siteInfo } = props
-
-  // 根据页面路径加载不同Layout文件
-  const Layout = getLayoutByTheme({ theme: siteConfig('THEME'), router: useRouter() })
-
   const meta = {
-    title: `${locale.COMMON.CATEGORY} | ${siteConfig('TITLE')}`,
-    description: siteConfig('DESCRIPTION'),
+    title: `${locale.COMMON.CATEGORY} | ${siteInfo?.title}`,
+    description: siteInfo?.description,
     image: siteInfo?.pageCover,
     slug: 'category',
     type: 'website'
   }
-  props = { ...props, meta }
-
-  return <Layout {...props} />
+  return <ThemeComponents.LayoutCategoryIndex {...props} meta={meta} />
 }
 
 export async function getStaticProps() {
-  const props = await getGlobalData({ from: 'category-index-props' })
-  delete props.allPages
+  const props = await getGlobalNotionData({ from: 'category-index-props' })
+  props.categories = getAllCategories({ allPages: props.allPages, categoryOptions: props.categoryOptions, sliceCount: 0 })
+  delete props.categoryOptions
   return {
     props,
-    revalidate: parseInt(BLOG.NEXT_REVALIDATE_SECOND)
+    revalidate: 1
   }
 }

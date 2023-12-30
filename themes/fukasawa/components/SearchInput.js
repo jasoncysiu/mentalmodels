@@ -1,11 +1,9 @@
-import { useGlobal } from '@/lib/global'
 import { useRouter } from 'next/router'
 import { useImperativeHandle, useRef, useState } from 'react'
 
-const SearchInput = (props) => {
-  const { keyword, cRef } = props
+const SearchInput = ({ currentTag, currentSearch, cRef }) => {
+  const [searchKey, setSearchKey] = useState(currentSearch || '')
   const [onLoading, setLoadingState] = useState(false)
-  const { locale } = useGlobal()
   const router = useRouter()
   const searchInputRef = useRef()
   useImperativeHandle(cRef, () => {
@@ -15,28 +13,17 @@ const SearchInput = (props) => {
       }
     }
   })
-
-  /**
-   * 搜索
-   */
-  const handleSearch = () => {
-    const key = searchInputRef.current.value
+  const handleSearch = (key) => {
     if (key && key !== '') {
       setLoadingState(true)
-      router.push({ pathname: '/search/' + key }).then(r => {
+      router.push({ pathname: '/search', query: { s: key } }).then(r => {
         setLoadingState(false)
       })
-      // location.href = '/search/' + key
     } else {
       router.push({ pathname: '/' }).then(r => {
       })
     }
   }
-
-  /**
-   * 监听案件
-   * @param {*} e
-   */
   const handleKeyUp = (e) => {
     if (e.keyCode === 13) { // 回车
       handleSearch(searchInputRef.current.value)
@@ -44,31 +31,43 @@ const SearchInput = (props) => {
       cleanSearch()
     }
   }
-
-  /**
-   * 清理索索
-   */
   const cleanSearch = () => {
     searchInputRef.current.value = ''
+    setSearchKey('')
   }
 
+  let lock = false
+  const updateSearchKey = (val) => {
+    if (!lock) {
+      setSearchKey(val)
+    }
+  }
+  function lockSearchInput () {
+    lock = true
+  }
+
+  function unLockSearchInput () {
+    lock = false
+  }
   return <div className='flex w-full bg-gray-100'>
     <input
       ref={searchInputRef}
       type='text'
-      placeholder={locale.SEARCH.ARTICLES}
-      aria-label="Search"
-      className={'outline-none w-full text-sm pl-2 transition focus:shadow-lg font-light leading-10 text-black bg-gray-100 dark:bg-gray-800 dark:text-white'}
+      className={'w-full text-sm pl-2 transition focus:shadow-lg font-light leading-10 text-black bg-gray-100 dark:bg-gray-800 dark:text-white'}
       onKeyUp={handleKeyUp}
-      defaultValue={keyword || ''}
+      onCompositionStart={lockSearchInput}
+      onCompositionUpdate={lockSearchInput}
+      onCompositionEnd={unLockSearchInput}
+      onChange={e => updateSearchKey(e.target.value)}
+      defaultValue={searchKey}
     />
 
     <div className='-ml-8 cursor-pointer float-right items-center justify-center py-2'
-      onClick={handleSearch}>
+      onClick={() => { handleSearch(searchKey) }}>
         <i className={`hover:text-black transform duration-200  text-gray-500 cursor-pointer fas ${onLoading ? 'fa-spinner animate-spin' : 'fa-search'}`} />
     </div>
 
-    {(keyword && keyword.length &&
+    {(searchKey && searchKey.length &&
       <div className='-ml-12 cursor-pointer dark:bg-gray-600 dark:hover:bg-gray-800 float-right items-center justify-center py-2'>
         <i className='hover:text-black transform duration-200 text-gray-400 cursor-pointer fas fa-times' onClick={cleanSearch} />
       </div>

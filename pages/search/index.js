@@ -1,65 +1,64 @@
-import { getGlobalData } from '@/lib/notion/getNotionData'
+import { getGlobalNotionData } from '@/lib/notion/getNotionData'
 import { useGlobal } from '@/lib/global'
 import { useRouter } from 'next/router'
-import BLOG from '@/blog.config'
-import { getLayoutByTheme } from '@/themes/theme'
-import { siteConfig } from '@/lib/config'
+import * as ThemeMap from '@/themes'
 
-/**
- * 搜索路由
- * @param {*} props
- * @returns
- */
 const Search = props => {
   const { posts, siteInfo } = props
-  const { locale } = useGlobal()
-
-  // 根据页面路径加载不同Layout文件
-  const Layout = getLayoutByTheme({ theme: siteConfig('THEME'), router: useRouter() })
-
   const router = useRouter()
-  const keyword = getSearchKey(router)
-
   let filteredPosts
+  const searchKey = getSearchKey(router)
   // 静态过滤
-  if (keyword) {
+  if (searchKey) {
     filteredPosts = posts.filter(post => {
-      const tagContent = post?.tags ? post?.tags.join(' ') : ''
+      const tagContent = post.tags ? post.tags.join(' ') : ''
       const categoryContent = post.category ? post.category.join(' ') : ''
       const searchContent =
-                post.title + post.summary + tagContent + categoryContent
-      return searchContent.toLowerCase().includes(keyword.toLowerCase())
+        post.title + post.summary + tagContent + categoryContent
+      return searchContent.toLowerCase().includes(searchKey.toLowerCase())
     })
   } else {
-    filteredPosts = []
+    filteredPosts = posts
   }
 
+  const { locale } = useGlobal()
   const meta = {
-    title: `${keyword || ''}${keyword ? ' | ' : ''}${locale.NAV.SEARCH} | ${siteConfig('TITLE')}`,
-    description: siteConfig('DESCRIPTION'),
+    title: `${searchKey || ''}${searchKey ? ' | ' : ''}${locale.NAV.SEARCH} | ${
+      siteInfo?.title
+    }`,
+    description: siteInfo?.description,
     image: siteInfo?.pageCover,
     slug: 'search',
     type: 'website'
   }
 
-  props = { ...props, meta, posts: filteredPosts }
+  const { theme } = useGlobal()
+  const ThemeComponents = ThemeMap[theme]
 
-  return <Layout {...props} />
+  return (
+    <ThemeComponents.LayoutSearch
+      {...props}
+      posts={filteredPosts}
+      currentSearch={searchKey}
+      meta={meta}
+    />
+  )
 }
 
 /**
  * 浏览器前端搜索
  */
 export async function getStaticProps() {
-  const props = await getGlobalData({
+  const props = await getGlobalNotionData({
     from: 'search-props',
     pageType: ['Post']
   })
   const { allPages } = props
-  props.posts = allPages?.filter(page => page.type === 'Post' && page.status === 'Published')
+  const allPosts = allPages.filter(page => page.type === 'Post' && page.status === 'Published')
+  props.posts = allPosts
   return {
     props,
-    revalidate: parseInt(BLOG.NEXT_REVALIDATE_SECOND)
+    revalidate: 1
   }
 }
 

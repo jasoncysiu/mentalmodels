@@ -1,48 +1,44 @@
-import { getGlobalData } from '@/lib/notion/getNotionData'
+import { getGlobalNotionData } from '@/lib/notion/getNotionData'
 import React from 'react'
 import { useGlobal } from '@/lib/global'
+import * as ThemeMap from '@/themes'
 import BLOG from '@/blog.config'
-import { useRouter } from 'next/router'
-import { getLayoutByTheme } from '@/themes/theme'
-import { siteConfig } from '@/lib/config'
 
 /**
  * 分类页
  * @param {*} props
  * @returns
  */
-
 export default function Category(props) {
-  const { siteInfo } = props
+  const { theme } = useGlobal()
+  const ThemeComponents = ThemeMap[theme]
+  const { siteInfo, posts } = props
   const { locale } = useGlobal()
-  // 根据页面路径加载不同Layout文件
-  const Layout = getLayoutByTheme({ theme: siteConfig('THEME'), router: useRouter() })
-
+  if (!posts) {
+    return <ThemeComponents.Layout404 {...props} />
+  }
   const meta = {
     title: `${props.category} | ${locale.COMMON.CATEGORY} | ${
-      siteConfig('TITLE') || ''
+      siteInfo?.title || ''
     }`,
-    description: siteConfig('DESCRIPTION'),
+    description: siteInfo?.description,
     slug: 'category/' + props.category,
     image: siteInfo?.pageCover,
     type: 'website'
   }
-
-  props = { ...props, meta }
-
-  return <Layout {...props} />
+  return <ThemeComponents.LayoutCategory {...props} meta={meta} />
 }
 
 export async function getStaticProps({ params: { category, page } }) {
   const from = 'category-page-props'
-  let props = await getGlobalData({ from })
+  let props = await getGlobalNotionData({ from })
 
   // 过滤状态类型
-  props.posts = props.allPages?.filter(page => page.type === 'Post' && page.status === 'Published').filter(post => post && post.category && post.category.includes(category))
+  props.posts = props.allPages.filter(page => page.type === 'Post' && page.status === 'Published').filter(post => post && post.category && post.category.includes(category))
   // 处理文章页数
   props.postCount = props.posts.length
   // 处理分页
-  props.posts = props.posts.slice(BLOG.POSTS_PER_PAGE * (page - 1), BLOG.POSTS_PER_PAGE * page)
+  props.posts = props.posts.slice(BLOG.POSTS_PER_PAGE * (page - 1), BLOG.POSTS_PER_PAGE * page - 1)
 
   delete props.allPages
   props.page = page
@@ -51,18 +47,18 @@ export async function getStaticProps({ params: { category, page } }) {
 
   return {
     props,
-    revalidate: parseInt(BLOG.NEXT_REVALIDATE_SECOND)
+    revalidate: 1
   }
 }
 
 export async function getStaticPaths() {
   const from = 'category-paths'
-  const { categoryOptions, allPages } = await getGlobalData({ from })
+  const { categories, allPages } = await getGlobalNotionData({ from })
   const paths = []
 
-  categoryOptions?.forEach(category => {
+  categories?.forEach(category => {
     // 过滤状态类型
-    const categoryPosts = allPages?.filter(page => page.type === 'Post' && page.status === 'Published').filter(post => post && post.category && post.category.includes(category.name))
+    const categoryPosts = allPages.filter(page => page.type === 'Post' && page.status === 'Published').filter(post => post && post.category && post.category.includes(category.name))
     // 处理文章页数
     const postCount = categoryPosts.length
     const totalPages = Math.ceil(postCount / BLOG.POSTS_PER_PAGE)
